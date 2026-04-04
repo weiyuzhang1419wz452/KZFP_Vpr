@@ -1,0 +1,28 @@
+# Large data directories — not tracked in git
+predictions/
+sequences/
+logs/
+analysis/
+archive/
+cache/
+
+# Cache and log files
+*.json
+*.log
+resub_cancelled.txt
+
+# Pending submission lists
+pending_*.txt
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+
+# R
+.Rhistory
+.RData
+
+# OS
+.DS_Store

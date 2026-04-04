@@ -1,0 +1,143 @@
+─────────────────────────────────────────────────────────────────────────────
+METHODS — Structural prediction of Vpr–KZFP interactions
+─────────────────────────────────────────────────────────────────────────────
+
+Identification of KZFP candidates
+
+KRAB-zinc finger proteins (KZFPs) subject to HIV-1 Vpr-mediated degradation
+were identified by gene set enrichment analysis (GSEA) of quantitative mass
+spectrometry proteomics data comparing HIV-1-infected and uninfected cells. A
+total of 377 KZFPs showing significant Vpr-dependent reduction in protein
+abundance were selected for structural interaction analysis.
+
+Protein sequence retrieval and domain extraction
+
+Full-length protein sequences and domain annotations for all 377 KZFPs were
+retrieved from UniProtKB (Swiss-Prot; accessed 2025) via the UniProt REST API
+(https://rest.uniprot.org/uniprotkb/search), querying by exact gene name
+restricted to reviewed human entries (organism_id:9606, reviewed:true). Where
+no reviewed entry was found, the top unreviewed entry was used as a fallback.
+For each protein, the KRAB domain was defined by the UniProt "Domain:KRAB"
+feature annotation; in cases lacking an explicit annotation, the first 90
+residues were used as a fallback provided the entry contained at least one
+C2H2-type zinc finger. The zinc finger (ZNF) array was defined as the
+contiguous span from the first to the last annotated C2H2 zinc finger repeat,
+capped at 200 amino acids to maintain computational tractability on CPU.
+
+KRAB-A/B sub-domain splitting
+
+The KRAB domain was further subdivided into the KRAB-A and KRAB-B boxes. The
+boundary between the two boxes was determined using the Pfam entry PF01352
+(KRAB box) retrieved via the InterPro API
+(https://www.ebi.ac.uk/interpro/api/entry/pfam/PF01352/protein/UniProt/{acc}).
+The end coordinate of the PF01352 match in the full-length protein was mapped
+back onto the extracted KRAB sequence to define the KRAB-A/B split point.
+Pfam-based boundaries were successfully obtained for 348 of 377 KZFPs; for the
+remaining 29 KZFPs, the first 40 residues of the KRAB domain were assigned to
+KRAB-A and the remainder to KRAB-B. Sequences shorter than 5 residues in
+either box were excluded.
+
+ColabFold structure prediction
+
+Protein–protein interaction models were generated using ColabFold v1.5.5
+(Mirdita et al., 2022, Nature Methods) running AlphaFold2-Multimer v3
+(Evans et al., 2022). For each KZFP, separate predictions were performed for
+three domain combinations paired with HIV-1 Vpr (HXB2; 96 aa):
+  (i)  Vpr + full KRAB domain
+  (ii) Vpr + ZNF array (capped at 200 aa)
+  (iii) Vpr + KRAB-A box
+  (iv) Vpr + KRAB-B box
+yielding a total of 1,131 two-chain prediction runs. Each run used five models
+(--num-models 5) and three recycling iterations (--num-recycle 3). Predictions
+were executed on a CPU-only compute node (cbsufeschotte2; 96 CPUs, ~900 GB
+RAM) via SLURM job arrays. Multiple sequence alignments (MSAs) were generated
+by ColabFold's paired alignment pipeline.
+
+Interaction scoring
+
+The primary metric for predicted protein–protein interaction confidence was the
+interface predicted TM-score (ipTM), extracted from ColabFold's rank_001 JSON
+score file for each prediction. The ipTM quantifies structural confidence
+specifically at the inter-chain interface (range 0–1), with values ≥0.5
+considered indicative of a plausible interaction and values ≥0.6 indicative
+of a confident interaction. For genes with five models, the maximum ipTM across
+all five models was used.
+
+KRAB-domain phylogenetic analysis
+
+KRAB domain sequences from all 377 KZFPs were aligned using MAFFT v7.525
+(Katoh & Standley, 2013, Molecular Biology and Evolution) with automatic
+strategy selection (--auto). A neighbor-joining (NJ) tree was constructed from
+an identity-based distance matrix computed on the multiple sequence alignment
+using the seqinr R package (dist.alignment, matrix = "identity"; nj/njs from
+the ape package). The tree was midpoint-rooted. Phylogenetic visualization was
+performed in R using ggtree (Yu et al., 2017, Molecular Biology and Evolution),
+with branches and tip labels colored by ipTM score using a continuous gradient
+(white–orange–red). An analogous tree was constructed separately using only
+KRAB-B sequences. For internal nodes, the displayed color represents the mean
+ipTM of all descendant tips.
+
+Identification of KRAB-B residues mediating Vpr interaction
+
+To identify specific amino acid positions within the KRAB-B box that are
+enriched among KZFPs predicted to interact with Vpr, KRAB-B sequences from
+all 377 KZFPs were aligned with MAFFT (--auto) producing an alignment of 377
+sequences × 229 positions. Genes were stratified into a high-interaction group
+(KRAB-B ipTM ≥ 0.5; n = 71) and a low-interaction group (ipTM < 0.5; n = 306).
+For each alignment position and each amino acid, a one-sided Fisher's exact
+test was performed to assess enrichment in the high-interaction group relative
+to the low-interaction group. P-values were corrected for multiple testing
+using the Bonferroni method (n = 229 positions × 20 amino acids = 4,580 tests).
+Positions with Bonferroni-corrected p < 0.05 and amino acid frequency ≥ 0.20
+in the high-interaction group were considered significant. Additionally, the
+Spearman rank correlation between amino acid presence (binary) and continuous
+ipTM score was computed for all positions to identify linearly correlated
+residues. Sequence logos were generated using the logomaker Python package
+(Tareen & Kinney, 2020, Bioinformatics).
+
+Sequence and structural feature analysis
+
+A feature matrix was constructed for each KZFP with completed KRAB-domain
+predictions, comprising three feature blocks:
+  (i)  Sequence features: KRAB sequence length, isoelectric point, net charge
+       at pH 7.0, mean Kyte–Doolittle hydrophobicity, aromaticity, instability
+       index, predicted secondary structure fractions (helix, sheet, coil;
+       computed with Biopython ProteinAnalysis), and per-residue amino acid
+       frequency for all 20 standard amino acids.
+  (ii) Evolutionary conservation features: per-position Shannon entropy
+       computed from the ColabFold paired MSA (a3m format), restricted to the
+       KRAB-chain portion (positions after Vpr). Summary statistics (mean, s.d.,
+       minimum, N-terminal and C-terminal window means) and number of homologs
+       were extracted.
+  (iii) Structural features: from the rank_001 AlphaFold2-Multimer model —
+       per-chain mean pLDDT, mean and minimum interface Predicted Aligned Error
+       (PAE; cross-chain blocks), focused interface PAE (residues within 8 Å
+       of the partner chain), number of inter-chain Cα contacts (threshold 8 Å),
+       and number of interface residues per chain.
+Spearman rank correlations between individual features and ipTM were computed
+using scipy.stats. Machine learning models (Random Forest and Gradient Boosting
+regressors; Random Forest classifier with ipTM ≥ 0.5 as the binary label) were
+trained using scikit-learn v1.7.2 with 5-fold cross-validation. Feature
+importance was assessed by permutation importance (20 repeats) on the Random
+Forest regressor.
+
+Software and data availability
+
+Analyses were implemented in Python 3 (pandas, numpy, matplotlib, scipy,
+Biopython v1.85, scikit-learn v1.7.2, logomaker) and R (ape, seqinr, ggtree,
+ggplot2, ggnewscale). Scripts are available at [repository URL].
+
+─────────────────────────────────────────────────────────────────────────────
+Key references (to insert as appropriate):
+  Mirdita M et al. (2022). ColabFold: making protein folding accessible to all.
+    Nature Methods 19, 679–682.
+  Evans R et al. (2022). Protein complex prediction with AlphaFold-Multimer.
+    bioRxiv. doi:10.1101/2021.10.04.463034
+  Katoh K & Standley DM (2013). MAFFT multiple sequence alignment software
+    version 7. Molecular Biology and Evolution 30, 772–780.
+  Yu G et al. (2017). ggtree: an R package for visualization and annotation
+    of phylogenetic trees with their covariates and related data sets.
+    Methods in Ecology and Evolution 8, 28–36.
+  Tareen A & Kinney JB (2020). Logomaker: beautiful sequence logos in Python.
+    Bioinformatics 36, 2272–2274.
+─────────────────────────────────────────────────────────────────────────────
