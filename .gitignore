@@ -11,8 +11,19 @@ cache/
 *.log
 resub_cancelled.txt
 
-# Pending submission lists
+# Pending submission lists and metadata
 pending_*.txt
+pending_*.tsv
+
+# Generated SLURM array scripts (auto-created by setup scripts)
+run_*_array.sh
+run_panel_array.sh
+run_slx4_array.sh
+run_mutant_scan_array.sh
+run_ala_scan_array.sh
+run_vpr_mutants_znf430.sh
+run_kap1_znf586.sh
+slurm_*.sh
 
 # Python
 __pycache__/
